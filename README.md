@@ -19,8 +19,7 @@ recording until `QUITKEY` is pressed again. The time of the first
 When playing, it plays back the macro by sending all events as XTEST
 requests.
 
-Loop repeatedly plays the macro until `QUITKEY` is pressed. The macro
-finishes playing before the program exits.
+Loop repeatedly plays the macro until `QUITKEY` is pressed.
 
 Important Considerations
 ------------------------
