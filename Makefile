@@ -1,7 +1,7 @@
 X11INC = /usr/X11R6/include
 X11LIB = /usr/X11R6/lib
 
-VERSION = 1.0.0
+VERSION = 2.0.0
 
 INC = -I. -I/usr/include -I$(X11INC)
 LIB = -L$(X11LIB) -lX11 -lXi -lXtst

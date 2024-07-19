@@ -36,7 +36,7 @@
 
 /* config */
 	/* keycode of start/end key */
-const KeyCode QUITKEY = 134;
+	const KeyCode QUITKEY = 134;
 /* end config */
 
 enum Type {
@@ -48,7 +48,7 @@ enum Type {
 struct Event {
 	enum Type type;
 	Time time;
-	unsigned long keyCodeOrButtonOrX;
+	unsigned int keyCodeOrButtonOrX;
 	int yOrIsPress;
 	int screen;
 };
@@ -59,7 +59,7 @@ enum State {
 	RECORD,
 };
 
-const char* shortopts = "hvlr:p:";
+const char* shortopts = ":hvlr:p:";
 const struct option longopts[] = {
 	{"help", no_argument, NULL, 'h'},
 	{"version", no_argument, NULL, 'v'},
@@ -73,7 +73,7 @@ int running = 1;
 int xiOpcode;
 
 void die(int ecode, const char* message, ...);
-enum State handleargs(int argc, char** argv, FILE** file, int* loop);
+enum State handleArgs(int argc, char** argv, FILE** file, int* loop);
 int isfile(char* file);
 void* loopPlay(void* dpy);
 void play(FILE* file, Display* dpy);
@@ -93,7 +93,7 @@ main(int argc, char** argv)
 	state = NONE;
 	loop = 0;
 
-	state = handleargs(argc, argv, &file, &loop);
+	state = handleArgs(argc, argv, &file, &loop);
 
 	if (file == NULL)
 		die (errno, "file open error: %s", strerror(errno));
@@ -154,7 +154,7 @@ die(int ecode, const char* message, ...)
 }
 
 enum State
-handleargs(int argc, char** argv, FILE** file, int* loop)
+handleArgs(int argc, char** argv, FILE** file, int* loop)
 {
 	char ch;
 	enum State state;
@@ -251,7 +251,7 @@ loopPlay(void* dpy)
 		XNextEvent(dpy, &ev);
 
 		if (XGetEventData(dpy, cookie) && cookie->type == GenericEvent &&
-		   cookie->extension == xiOpcode && cookie->evtype == XI_RawKeyPress) {
+		    cookie->extension == xiOpcode && cookie->evtype == XI_RawKeyPress) {
 			rawEv = cookie->data;
 			if (rawEv->detail == QUITKEY)
 				running = 0;
@@ -285,6 +285,8 @@ play(FILE* file, Display* dpy)
 			XTestFakeMotionEvent(dpy, event.screen, event.keyCodeOrButtonOrX,
 			                     event.yOrIsPress, event.time);
 			break;
+		default:
+			die(-1, "unknown event type");
 		}
 		time += event.time;
 	}
@@ -399,7 +401,6 @@ record(FILE* file, Display* dpy)
 
 	return;
 }
-
 
 void
 usage(void)
