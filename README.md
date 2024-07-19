@@ -36,6 +36,7 @@ Exit Status
 -----------
 | Return Code |                                                Meaning |
 | :---------- | -----------------------------------------------------: |
+| -1          |                                     Unknown event type |
 | 11          |    X server connect failed or extension is not running |
 | 21          |                       File is specified is not regular |
 | 22          |                                         Argument error |
