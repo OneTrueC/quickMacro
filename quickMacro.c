@@ -59,23 +59,23 @@ enum State {
 	RECORD,
 };
 
-const char* shortopts = ":hvlr:p:";
+const char* shortopts = "hvlrp";
 const struct option longopts[] = {
-	{"help", no_argument, NULL, 'h'},
+	{"help",    no_argument, NULL, 'h'},
 	{"version", no_argument, NULL, 'v'},
-	{"loop", no_argument, NULL, 'l'},
-	{"record", required_argument, NULL, 'r'},
-	{"play", required_argument, NULL, 'p'},
-	{NULL, 0, NULL, 0}
+	{"loop",    no_argument, NULL, 'l'},
+	{"record",  no_argument, NULL, 'r'},
+	{"play",    no_argument, NULL, 'p'},
+	{NULL, 0, NULL, 0},
 };
 
 int running = 1;
 int xiOpcode;
 
 void die(int ecode, const char* message, ...);
-enum State handleArgs(int argc, char** argv, FILE** file, int* loop);
+void* exitPlay(void* dpy);
+enum State handleArgs(int argc, char** argv, int* loop);
 int isfile(char* file);
-void* loopPlay(void* dpy);
 void play(FILE* file, Display* dpy);
 void record(FILE* file, Display* dpy);
 void usage(void);
@@ -93,7 +93,12 @@ main(int argc, char** argv)
 	state = NONE;
 	loop = 0;
 
-	state = handleArgs(argc, argv, &file, &loop);
+	state = handleArgs(argc, argv, &loop);
+
+	if (optind >= argc)
+		die(22, "no file specified");
+
+	file = fopen(argv[optind], state == RECORD ? "w" : "r");
 
 	if (file == NULL)
 		die (errno, "file open error: %s", strerror(errno));
@@ -116,17 +121,18 @@ main(int argc, char** argv)
 		record(file, dpy);
 		break;
 	case PLAY:
-		if (loop) {
-			if ((errno = pthread_create(&thid, NULL, loopPlay, dpy)) != 0)
-				die(errno, "loop thread creation failed: %s", strerror(errno));
+		if ((errno = pthread_create(&thid, NULL, exitPlay, dpy)) != 0)
+			die(errno, "quit thread creation failed: %s", strerror(errno));
 
+		if (loop) {
 			while (running) {
 				play(file, dpy);
 				rewind(file);
 			}
-			pthread_join(thid, NULL);
 		} else
 			play(file, dpy);
+
+		pthread_join(thid, NULL);
 		break;
 	}
 
@@ -153,8 +159,43 @@ die(int ecode, const char* message, ...)
 	exit(ecode);
 }
 
+void*
+exitPlay(void* dpy)
+{
+	XEvent ev;
+	XGenericEventCookie* cookie;
+	XIEventMask mask;
+	XIRawEvent* rawEv;
+
+	cookie = (XGenericEventCookie*)&ev.xcookie;
+
+	mask.deviceid = XIAllMasterDevices;
+	mask.mask_len = XIMaskLen(XI_LASTEVENT);
+	mask.mask = calloc(mask.mask_len, sizeof(char));
+	XISetMask(mask.mask, XI_RawKeyPress);
+
+	XISelectEvents(dpy, DefaultRootWindow(dpy), &mask, 1);
+	XSync(dpy, False);
+
+	free(mask.mask);
+
+	while (running) {
+		XNextEvent(dpy, &ev);
+
+		if (XGetEventData(dpy, cookie) && cookie->type == GenericEvent &&
+		    cookie->extension == xiOpcode && cookie->evtype == XI_RawKeyPress) {
+			rawEv = cookie->data;
+			if (rawEv->detail == QUITKEY)
+				running = 0;
+		}
+		XFreeEventData(dpy, cookie);
+	}
+
+	exit(0);
+}
+
 enum State
-handleArgs(int argc, char** argv, FILE** file, int* loop)
+handleArgs(int argc, char** argv, int* loop)
 {
 	char ch;
 	enum State state;
@@ -184,7 +225,6 @@ handleArgs(int argc, char** argv, FILE** file, int* loop)
 			if (!isfile(optarg))
 				die(21, "file specified is not a regular file");
 			state = PLAY;
-			*file = fopen(optarg, "r");
 			break;
 		case 'r':
 			if (state == PLAY) {
@@ -196,16 +236,10 @@ handleArgs(int argc, char** argv, FILE** file, int* loop)
 				ERECORDLOOP;
 			}
 			state = RECORD;
-			*file = fopen(optarg, "w");
 			break;
 		case '?':
 			usage();
 			die(22, "unknown argument");
-			break;
-		case ':':
-			usage();
-			die(22, "need a file to %s",
-			    (optopt == 'p') ? "play from" : "record to");
 			break;
 		default:
 			usage();
@@ -224,51 +258,13 @@ isfile(char* file)
 	return S_ISREG(file_stat.st_mode);
 }
 
-void*
-loopPlay(void* dpy)
-{
-	XEvent ev;
-	XGenericEventCookie* cookie;
-	XIEventMask mask;
-	XIRawEvent* rawEv;
-
-	cookie = (XGenericEventCookie*)&ev.xcookie;
-
-	mask.deviceid = XIAllMasterDevices;
-	mask.mask_len = XIMaskLen(XI_LASTEVENT);
-	mask.mask = calloc(mask.mask_len, sizeof(char));
-	XISetMask(mask.mask, XI_RawKeyPress);
-	XISetMask(mask.mask, XI_RawKeyRelease);
-	XISetMask(mask.mask, XI_RawButtonPress);
-	XISetMask(mask.mask, XI_RawButtonRelease);
-
-	XISelectEvents(dpy, DefaultRootWindow(dpy), &mask, 1);
-	XSync(dpy, False);
-
-	free(mask.mask);
-
-	while (running) {
-		XNextEvent(dpy, &ev);
-
-		if (XGetEventData(dpy, cookie) && cookie->type == GenericEvent &&
-		    cookie->extension == xiOpcode && cookie->evtype == XI_RawKeyPress) {
-			rawEv = cookie->data;
-			if (rawEv->detail == QUITKEY)
-				running = 0;
-		}
-		XFreeEventData(dpy, cookie);
-	}
-
-	exit(0);
-}
-
 void
 play(FILE* file, Display* dpy)
 {
 	struct Event event;
 	Time time;
 	struct timespec ts;
-	
+
 	time = 0;
 
 	while (fread(&event, sizeof(struct Event), 1, file)) {

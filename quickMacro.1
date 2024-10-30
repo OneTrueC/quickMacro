@@ -1,47 +1,48 @@
 .TH quickMacro 1 "quickMacro VERSION"
 .SH NAME
-quickMacro - a simple and fast macro program
+\fBquickMacro\fR - a simple and fast macro program
 .SH SYNOPSIS
-.B quickMacro [MODE] [FILE] [LOOP?]
-.SH MODES
-.TP 8
-.B --record [FILE]
-Wait for `QUITKEY` to be pressed and then start recording
-until `QUITKEY` is pressed again. The time of the first
-`QUITKEY` press is the zero time offset for the macro.
-.TP 8
-.B --play [FILE]
+.B quickMacro
+\fB-r\fR|\fB-p\fR [\fB-l\fR] \fIfile\fR
+.SH DESCRIPTION
+Record or play macros to or from \fIfile\fR
+.SH OPTIONS
+.TP
+.B -r, --record
+Wait for QUITKEY to be pressed and then start recording
+until QUITKEY is pressed again. The time of the first
+QUITKEY press is the zero time offset for the macro.
+.TP
+.B -p, --play
 Play back the macro by sending all events as XTEST requests.
-.TP 8
-.B --loop
-Play the macro until `QUITKEY` is pressed.
+.TP
+.B -l, --loop
+Play the macro until QUITKEY is pressed.
 .SH IMPORTANT CONSIDERATIONS
 Each event takes up 32 bytes in the macro file. Mouse events
-occur at a very fast frequency and thus can quickly take up
-space.
-
-Because the whole macro is sent at once, there is no way to
-stop a macro while its playing.
+occur at a high frequency and thus can quickly take up a lot
+of space.
 
 The time between each loop of the macro is the time between
 starting recording and the first event recorded.
 .SH EXIT STATUS
-.TS
-allbox;
-lb lb
-l l.
-Return Value	Meaning
--1	Unknown event type
-11	X server connect failed or extension is not running
-21	File is specified is not regular
-22	Argument error
-.TE
+.TP
+.B -1
+Unknown event type
+.TP
+.B 11
+X server connect failed or extension is not running
+.TP
+.B 21
+File is specified is not regular
+.TP
+.B 22
+Argument error
 .SH CUSTOMIZATION
-quickMacro can be customized by editing `QUITKEY` under
-.AR /* config */
-near the top of the source, and recompiling.
+quickMacro can be customized by editing QUITKEY under
+\fI/* config */\fR near the top of the source, and
+recompiling.
 
-`QUITKEY` is the keycode of the key that starts and ends
+QUITKEY is the keycode of the key that starts and ends
 macro recording. It is set to the US right super key by
 default.
-.PP
