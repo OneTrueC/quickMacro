@@ -69,7 +69,6 @@ const struct option longopts[] = {
 	{NULL, 0, NULL, 0},
 };
 
-int running = 1;
 int xiOpcode;
 
 void die(int ecode, const char* message, ...);
@@ -98,6 +97,9 @@ main(int argc, char** argv)
 	if (optind >= argc)
 		die(22, "no file specified");
 
+	if (state == PLAY && !isfile(argv[optind]))
+		die(21, "file specified is not a regular file");
+
 	file = fopen(argv[optind], state == RECORD ? "w" : "r");
 
 	if (file == NULL)
@@ -124,15 +126,16 @@ main(int argc, char** argv)
 		if ((errno = pthread_create(&thid, NULL, exitPlay, dpy)) != 0)
 			die(errno, "quit thread creation failed: %s", strerror(errno));
 
+		pthread_detach(thid);
+
 		if (loop) {
-			while (running) {
+			while (1) {
 				play(file, dpy);
 				rewind(file);
 			}
 		} else
 			play(file, dpy);
 
-		pthread_join(thid, NULL);
 		break;
 	}
 
@@ -179,19 +182,17 @@ exitPlay(void* dpy)
 
 	free(mask.mask);
 
-	while (running) {
+	while (1) {
 		XNextEvent(dpy, &ev);
 
 		if (XGetEventData(dpy, cookie) && cookie->type == GenericEvent &&
 		    cookie->extension == xiOpcode && cookie->evtype == XI_RawKeyPress) {
 			rawEv = cookie->data;
 			if (rawEv->detail == QUITKEY)
-				running = 0;
+				exit(0);
 		}
 		XFreeEventData(dpy, cookie);
 	}
-
-	exit(0);
 }
 
 enum State
@@ -222,8 +223,6 @@ handleArgs(int argc, char** argv, int* loop)
 				usage();
 				EPLAYRECORD;
 			}
-			if (!isfile(optarg))
-				die(21, "file specified is not a regular file");
 			state = PLAY;
 			break;
 		case 'r':
@@ -341,7 +340,7 @@ record(FILE* file, Display* dpy)
 		XFreeEventData(dpy, cookie);
 	}
 
-	while (running) {
+	while (1) {
 		XNextEvent(dpy, &ev);
 
 		if (XGetEventData(dpy, cookie) && cookie->type == GenericEvent &&
@@ -351,8 +350,8 @@ record(FILE* file, Display* dpy)
 			case XI_RawKeyRelease:
 				rawEv = cookie->data;
 				if (rawEv->detail == QUITKEY) {
-					running = 0;
-					continue;
+					XFreeEventData(dpy, cookie);
+					return;
 				}
 				event.type = KEY;
 				break;
@@ -393,9 +392,6 @@ record(FILE* file, Display* dpy)
 		}
 		XFreeEventData(dpy, cookie);
 	}
-	XFreeEventData(dpy, cookie);
-
-	return;
 }
 
 void
