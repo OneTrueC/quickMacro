@@ -9,6 +9,8 @@ LIB = -L$(X11LIB) -lX11 -lXi -lXtst
 CFLAGS = -Wall -Wextra -std=c99 -pedantic -DVERSION=\"$(VERSION)\" $(INC) -O3
 LDFLAGS = $(LIB) -s
 
+.PHONY: build clean install uninstall
+
 all: build
 
 build: quickMacro.c
@@ -26,3 +28,7 @@ install: build
 uninstall:
 	rm /usr/bin/quickMacro
 	rm /usr/share/man/man1/quickMacro.1.gz
+
+docs:
+	pandoc -f man -t markdown -o README.md quickMacro.1
+	sed -ie "s/QUITKEY/\`QUITKEY\`/g" README.md

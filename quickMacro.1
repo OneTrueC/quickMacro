@@ -2,8 +2,7 @@
 .SH NAME
 \fBquickMacro\fR - a simple and fast macro program
 .SH SYNOPSIS
-.B quickMacro
-\fB-r\fR|\fB-p\fR [\fB-l\fR] \fIfile\fR
+\fBquickMacro\fR \fB-r\fR|\fB-p\fR [\fB-l\fR] \fIfile\fR
 .SH DESCRIPTION
 Record or play macros to or from \fIfile\fR
 .SH OPTIONS
@@ -23,6 +22,9 @@ Each event takes up 32 bytes in the macro file. Mouse events
 occur at a high frequency and thus can quickly take up a lot
 of space.
 
+\fBquickMacro\fR may take a while to stop after QUITKEY is
+pressed
+
 The time between each loop of the macro is the time between
 starting recording and the first event recorded.
 .SH EXIT STATUS
@@ -39,7 +41,7 @@ File is specified is not regular
 .B 22
 Argument error
 .SH CUSTOMIZATION
-quickMacro can be customized by editing QUITKEY under
+\fBquickMacro\fR can be customized by editing QUITKEY under
 \fI/* config */\fR near the top of the source, and
 recompiling.
 
